@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torneo Calcio a 7 - Pro Edition</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --light: #ecf0f1;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--light); }
+        nav { background: var(--primary); padding: 1rem; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        nav a { color: white; text-decoration: none; font-weight: bold; cursor: pointer; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        section { display: none; }
+        section.active { display: block; }
+        
+        /* Immagini */
+        .logo-squadra { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; background: #eee; margin-bottom: 10px; border: 2px solid var(--accent); }
+        .foto-persona { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; vertical-align: middle; margin-right: 10px; background: #ddd; }
+
+        /* Squadre Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .card { padding: 20px; border: 1px solid #ddd; border-radius: 5px; text-align: center; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
+        .card:hover { background: var(--accent); color: white; }
+
+        /* Admin */
+        .admin-panel { border: 2px dashed #c0392b; padding: 20px; margin-top: 20px; border-radius: 10px; }
+        .admin-field { margin-bottom: 15px; }
+        input, select, textarea { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { background: var(--accent); color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        
+        /* Tabelle */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f4f4f4; }
+        details { margin-bottom: 10px; padding: 10px; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a onclick="showSection('home')">Home</a>
+    <a onclick="showSection('gestione')">Gestione Squadre</a>
+    <a onclick="showSection('tabellone')">Tabellone</a>
+    <a onclick="showSection('calendario')">Calendario</a>
+    <a onclick="showSection('marcatori')">Marcatori</a>
+    <a onclick="showSection('admin')">🔐 Admin</a>
+</nav>
+
+<div class="container">
+    
+    <section id="home" class="active">
+        <h2>Squadre Partecipanti</h2>
+        <div id="home-grid" class="grid"></div>
+    </section>
+
+    <section id="gestione">
+        <h2>Dettagli Formazioni</h2>
+        <div id="formazioni-list"></div>
+    </section>
+
+    <section id="tabellone">
+        <h2>Tabellone Fasi Finali</h2>
+        <div id="tabellone-content">
+            <p><strong>Ottavi di Finale:</strong></p>
+            <div id="ottavi-list"></div>
+        </div>
+    </section>
+
+    <section id="calendario">
+        <h2>Calendario e Risultati</h2>
+        <table id="table-calendario">
+            <thead><tr><th>Data</th><th>Match</th><th>Risultato</th><th>Azioni</th></tr></thead>
+            <tbody id="cal-body"></tbody>
+        </table>
+    </section>
+
+    <section id="marcatori">
+        <h2>Classifica Marcatori</h2>
+        <table id="table-marcatori">
+            <thead><tr><th>Foto</th><th>Giocatore</th><th>Squadra</th><th>Gol</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <section id="admin">
+        <div id="admin-login">
+            <h2>Accesso Riservato</h2>
+            <input type="password" id="admin-pass" placeholder="Password (default: admin123)">
+            <button onclick="checkLogin()">Accedi</button>
+        </div>
+        
+        <div id="admin-tools" style="display:none;">
+            <div class="admin-panel">
+                <h3>Modifica Squadra, Nome e Foto</h3>
+                <select id="edit-select-squadra" onchange="loadSquadraData()"></select>
+                
+                <input type="text" id="edit-nome-squadra" placeholder="Nome Squadra">
+                
+                <div class="admin-field">
+                    <label>Logo Squadra:</label>
+                    <input type="file" id="file-logo" accept="image/*">
+                </div>
+                
+                <input type="text" id="edit-allenatore" placeholder="Nome Allenatore">
+                <div class="admin-field">
+                    <label>Foto Allenatore:</label>
+                    <input type="file" id="file-foto-all" accept="image/*">
+                </div>
+
+                <textarea id="edit-formazione" placeholder="Lista Giocatori..." rows="3"></textarea>
+                <button onclick="saveSquadra()">Salva Modifiche Squadra</button>
+            </div>
+
+            <div class="admin-panel">
+                <h3>Aggiungi Match a Calendario</h3>
+                <input type="text" id="cal-data" placeholder="Es: 8 Aprile">
+                <input type="text" id="cal-match" placeholder="Es: Squadra 1 vs Squadra 2">
+                <input type="text" id="cal-risultato" placeholder="Es: 2 - 1 (o TBD)">
+                <button onclick="addMatch()">Aggiungi al Calendario</button>
+            </div>
+
+            <div class="admin-panel">
+                <h3>Aggiungi Marcatore</h3>
+                <input type="text" id="m-nome" placeholder="Nome Giocatore">
+                <input type="number" id="m-gol" placeholder="Numero Gol">
+                <input type="file" id="m-foto" accept="image/*">
+                <button onclick="addMarcatore()">Aggiungi Marcatore</button>
+            </div>
+
+            <button onclick="logout()" style="background:#c0392b; margin-top:10px;">Esci</button>
+        </div>
+    </section>
+</div>
+
+<script>
+    let dati = JSON.parse(localStorage.getItem('torneo_v3')) || {
+        squadre: Array.from({length: 8}, (_, i) => ({
+            id: i, nome: "Squadra " + (i+1), logo: "", allenatore: "Da definire", fotoAll: "", formazione: "G1, G2...", panchina: ""
+        })),
+        marcatori: [],
+        calendario: []
+    };
+
+    function showSection(id) {
+        document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        renderAll();
+    }
+
+    async function toBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    function renderAll() {
+        // Home
+        document.getElementById('home-grid').innerHTML = dati.squadre.map(s => `
+            <div class="card" onclick="showSection('gestione')">
+                <img src="${s.logo || 'https://via.placeholder.com/60'}" class="logo-squadra">
+                <h3>${s.nome}</h3>
+            </div>
+        `).join('');
+
+        // Gestione
+        document.getElementById('formazioni-list').innerHTML = dati.squadre.map(s => `
+            <details>
+                <summary><img src="${s.logo || 'https://via.placeholder.com/60'}" class="foto-persona" style="width:25px;height:25px"> <strong>${s.nome}</strong></summary>
+                <div style="padding:10px; display:flex; gap:20px; align-items:center;">
+                    <img src="${s.fotoAll || 'https://via.placeholder.com/40'}" class="foto-persona" style="width:80px; height:80px">
+                    <div>
+                        <p><strong>Allenatore:</strong> ${s.allenatore}</p>
+                        <p><strong>Formazione:</strong> ${s.formazione}</p>
+                    </div>
+                </div>
+            </details>
+        `).join('');
+
+        // Calendario
+        document.getElementById('cal-body').innerHTML = dati.calendario.map((c, index) => `
+            <tr>
+                <td>${c.data}</td>
+                <td>${c.match}</td>
+                <td><strong>${c.risultato}</strong></td>
+                <td><button onclick="deleteMatch(${index})" style="background:red; padding:5px;">X</button></td>
+            </tr>
+        `).join('');
+
+        // Marcatori
+        document.querySelector('#table-marcatori tbody').innerHTML = dati.marcatori.sort((a,b) => b.gol - a.gol).map(m => `
+            <tr>
+                <td><img src="${m.foto || 'https://via.placeholder.com/40'}" class="foto-persona"></td>
+                <td>${m.nome}</td>
+                <td>${m.squadra}</td>
+                <td>${m.gol}</td>
+            </tr>
+        `).join('');
+
+        // Select Admin
+        const select = document.getElementById('edit-select-squadra');
+        const currentVal = select.value;
+        select.innerHTML = dati.squadre.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+        if(currentVal) select.value = currentVal;
+    }
+
+    function checkLogin() {
+        if(document.getElementById('admin-pass').value === "admin123") {
+            document.getElementById('admin-login').style.display = 'none';
+            document.getElementById('admin-tools').style.display = 'block';
+            loadSquadraData();
+        } else { alert("Sbagliato!"); }
+    }
+
+    function logout() {
+        document.getElementById('admin-login').style.display = 'block';
+        document.getElementById('admin-tools').style.display = 'none';
+    }
+
+    async function saveSquadra() {
+        const id = document.getElementById('edit-select-squadra').value;
+        const s = dati.squadre[id];
+        
+        s.nome = document.getElementById('edit-nome-squadra').value;
+        s.allenatore = document.getElementById('edit-allenatore').value;
+        s.formazione = document.getElementById('edit-formazione').value;
+        
+        const logoFile = document.getElementById('file-logo').files[0];
+        const fotoAllFile = document.getElementById('file-foto-all').files[0];
+        
+        if(logoFile) s.logo = await toBase64(logoFile);
+        if(fotoAllFile) s.fotoAll = await toBase64(fotoAllFile);
+        
+        saveData();
+        alert("Squadra aggiornata!");
+        renderAll();
+    }
+
+    function addMatch() {
+        const data = document.getElementById('cal-data').value;
+        const match = document.getElementById('cal-match').value;
+        const risultato = document.getElementById('cal-risultato').value;
+        if(data && match) {
+            dati.calendario.push({data, match, risultato});
+            saveData();
+            renderAll();
+            alert("Match aggiunto!");
+        }
+    }
+
+    function deleteMatch(index) {
+        dati.calendario.splice(index, 1);
+        saveData();
+        renderAll();
+    }
+
+    async function addMarcatore() {
+        const nome = document.getElementById('m-nome').value;
+        const gol = document.getElementById('m-gol').value;
+        const fotoFile = document.getElementById('m-foto').files[0];
+        let fotoData = "";
+        if(fotoFile) fotoData = await toBase64(fotoFile);
+
+        dati.marcatori.push({nome, gol, foto: fotoData, squadra: "N/D"});
+        saveData();
+        renderAll();
+        alert("Marcatore aggiunto!");
+    }
+
+    function loadSquadraData() {
+        const id = document.getElementById('edit-select-squadra').value;
+        const s = dati.squadre[id];
+        document.getElementById('edit-nome-squadra').value = s.nome;
+        document.getElementById('edit-allenatore').value = s.allenatore;
+        document.getElementById('edit-formazione').value = s.formazione;
+    }
+
+    function saveData() { localStorage.setItem('torneo_v3', JSON.stringify(dati)); }
+
+    renderAll();
+</script>
+</body>
+</html>
